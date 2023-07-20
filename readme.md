@@ -93,6 +93,15 @@ If the session cookie has a `expires` date, `connect-redis` will use it as the T
 
 Otherwise, it will expire the session using the `ttl` option (default: `86400` seconds or one day).
 
+```ts
+interface RedisStoreOptions {
+  ...
+  ttl?: number | {(sess: SessionData): number}
+}
+```
+
+`ttl` also has external callback support. You can use it for dynamic TTL generation. It has access to `session` data.
+
 **Note**: The TTL is reset every time a user interacts with the server. You can disable this behavior in _some_ instances by using `disableTouch`.
 
 **Note**: `express-session` does not update `expires` until the end of the request life cycle. _Calling `session.save()` manually beforehand will have the previous value_.
@@ -117,9 +126,11 @@ This option disables key expiration requiring the user to manually manage key cl
 
 Provide a custom encoder/decoder to use when storing and retrieving session data from Redis (default: `JSON.parse` and `JSON.stringify`).
 
+Optionally `parse` method can be async if need be.
+
 ```ts
 interface Serializer {
-  parse(string): object
+  parse(string): object | Promise<object>
   stringify(object): string
 }
 ```

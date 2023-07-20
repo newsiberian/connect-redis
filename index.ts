@@ -12,7 +12,7 @@ interface NormalizedRedisClient {
 }
 
 interface Serializer {
-  parse(s: string): SessionData
+  parse(s: string): SessionData | Promise<SessionData>
   stringify(s: SessionData): string
 }
 
@@ -21,7 +21,7 @@ interface RedisStoreOptions {
   prefix?: string
   scanCount?: number
   serializer?: Serializer
-  ttl?: number
+  ttl?: number | {(sess: SessionData): number}
   disableTTL?: boolean
   disableTouch?: boolean
 }
@@ -31,7 +31,7 @@ export class RedisStore extends Store {
   prefix: string
   scanCount: number
   serializer: Serializer
-  ttl: number
+  ttl: number | {(sess: SessionData): number}
   disableTTL: boolean
   disableTouch: boolean
 
@@ -83,7 +83,7 @@ export class RedisStore extends Store {
     try {
       let data = await this.client.get(key)
       if (!data) return cb()
-      return cb(null, this.serializer.parse(data))
+      return cb(null, await this.serializer.parse(data))
     } catch (err) {
       return cb(err)
     }
@@ -181,6 +181,10 @@ export class RedisStore extends Store {
   }
 
   private _getTTL(sess: SessionData) {
+    if (typeof this.ttl === "function") {
+      return this.ttl(sess)
+    }
+
     let ttl
     if (sess && sess.cookie && sess.cookie.expires) {
       let ms = Number(new Date(sess.cookie.expires)) - Date.now()
